@@ -1,4 +1,6 @@
 import React, { useState, useRef, useMemo, useCallback, useEffect } from "react";
+import * as qm from "./src/lib/quantMath.js";
+import FORMULA_DEFS from "./src/data/formulas.json";
 
 /* ============================================================
    CELERIE — drag-and-drop quantitative model builder
@@ -23,12 +25,16 @@ const d2v = (S, K, r, s, T) => d1(S, K, r, s, T) - s * Math.sqrt(T);
 
 // ---- category palette ----
 const CAT = {
-  data:      { c: "#2563EB", label: "Data" },
-  valuation: { c: "#B45309", label: "Valuation" },
-  hedging:   { c: "#7C3AED", label: "Hedging" },
-  filtering: { c: "#4A7C59", label: "Filtering (Physics)" },
-  advanced:  { c: "#DC2626", label: "Advanced" },
-  output:    { c: "#78716C", label: "Output" },
+  data:         { c: "#2563EB", label: "Data" },
+  valuation:    { c: "#B45309", label: "Equity Valuation" },
+  hedging:      { c: "#7C3AED", label: "Derivatives" },
+  filtering:    { c: "#4A7C59", label: "Stochastic" },
+  advanced:     { c: "#DC2626", label: "Advanced" },
+  output:       { c: "#78716C", label: "Output" },
+  fixed_income: { c: "#0891B2", label: "Fixed Income" },
+  portfolio:    { c: "#059669", label: "Portfolio Theory" },
+  risk:         { c: "#EA580C", label: "Risk Metrics" },
+  tvm:          { c: "#6366F1", label: "Time Value of Money" },
 };
 
 // safe-ish expression evaluator for the advanced formula-cell tier
@@ -78,6 +84,66 @@ const DEFS = {
   output: { label: "Display", cat: "output", out: false, inputs: [{ name: "value" }], compute: (i) => i.value },
 };
 
+// ---- merge formula library into DEFS ----------------------------------------
+const QM_FNS = {
+  gordonGrowth: (i) => qm.gordonGrowth(i.D1, i.r, i.g),
+  peValuation:  (i) => qm.peValuation(i.EPS, i.pe),
+  evEbitda:     (i) => qm.evEbitda(i.EBITDA, i.multiple),
+  capm:         (i) => qm.capm(i.Rf, i.beta, i.Rm),
+  wacc:         (i) => qm.wacc(i.E, i.D, i.Re, i.Rd, i.Tc),
+  optionGamma:  (i) => qm.optionGamma(i.S, i.K, i.r, i.sigma, i.T),
+  optionVega:   (i) => qm.optionVega(i.S, i.K, i.r, i.sigma, i.T),
+  optionThetaCall:(i)=> qm.optionThetaCall(i.S, i.K, i.r, i.sigma, i.T),
+  optionRhoCall:  (i)=> qm.optionRhoCall(i.S, i.K, i.r, i.sigma, i.T),
+  putCallParity:  (i)=> qm.putCallParity(i.S, i.K, i.r, i.T),
+  bondPrice:      (i)=> qm.bondPrice(i.C, i.FV, i.r, i.n),
+  currentYield:   (i)=> i.C / i.P,
+  macaulayDuration:(i)=>qm.macaulayDuration(i.C, i.FV, i.r, i.n),
+  modifiedDuration:(i)=>qm.modifiedDuration(i.C, i.FV, i.r, i.n),
+  bondConvexity:  (i)=> qm.bondConvexity(i.C, i.FV, i.r, i.n),
+  ytm:            (i)=> qm.ytm(i.C, i.FV, i.P, i.n),
+  portfolioReturn2:(i)=>qm.portfolioReturn2(i.w1, i.R1, i.w2, i.R2),
+  portfolioVariance2:(i)=>qm.portfolioVariance2(i.w1, i.s1, i.w2, i.s2, i.rho),
+  betaFromCov:    (i)=> qm.betaFromCov(i.covIM, i.varM),
+  jensenAlpha:    (i)=> qm.jensenAlpha(i.Rp, i.Rf, i.beta, i.Rm),
+  treynorRatio:   (i)=> qm.treynorRatio(i.Rp, i.Rf, i.beta),
+  informationRatio:(i)=>qm.informationRatio(i.Rp, i.Rb, i.trackingError),
+  sharpeRatio:    (i)=> qm.sharpeRatio(i.Rp, i.Rf, i.sigma),
+  sortinoRatio:   (i)=> qm.sortinoRatio(i.Rp, i.MAR, i.sigmaDown),
+  varParametric:  (i)=> qm.varParametric(i.mu, i.sigma, i.z),
+  calmarRatio:    (i)=> qm.calmarRatio(i.annualReturn, i.maxDrawdown),
+  presentValue:   (i)=> qm.presentValue(i.FV, i.r, i.n),
+  futureValue:    (i)=> qm.futureValue(i.PV, i.r, i.n),
+  npv5:           (i)=> qm.npv5(i.CF0, i.CF1, i.CF2, i.CF3, i.CF4, i.r),
+  irr5:           (i)=> qm.irr5(i.CF0, i.CF1, i.CF2, i.CF3, i.CF4),
+  annuityPV:      (i)=> qm.annuityPV(i.PMT, i.r, i.n),
+  annuityFV:      (i)=> qm.annuityFV(i.PMT, i.r, i.n),
+  perpetuity:     (i)=> qm.perpetuity(i.CF, i.r),
+  growingPerpetuity:(i)=>qm.growingPerpetuity(i.CF1, i.r, i.g),
+  compoundInterest:(i)=>qm.compoundInterest(i.P, i.r, i.n, i.m),
+  continuousCompound:(i)=>qm.continuousCompound(i.P, i.r, i.t),
+  gbmExpected:    (i)=> qm.gbmExpected(i.S0, i.mu, i.T),
+  logReturn:      (i)=> qm.logReturn(i.St, i.S0),
+  realizedVol:    (i)=> qm.realizedVol(i.dailySigma),
+};
+
+FORMULA_DEFS.forEach((f) => {
+  if (DEFS[f.id]) return; // don't overwrite existing blocks
+  const computeFn = QM_FNS[f.fn] ?? null;
+  if (!computeFn && !f.expr) return; // skip unimplementable
+  DEFS[f.id] = {
+    label:   f.name,
+    cat:     f.category,
+    out:     true,
+    inputs:  f.inputs.map((inp) => ({ name: inp.symbol })),
+    compute: computeFn,
+    params:  {},
+    _latex:  f.latex,
+    _desc:   f.description,
+    _tags:   f.tags,
+  };
+});
+
 const NODE_W = 196, HEADER = 42, ROW = 26;
 const inPortY  = (i) => HEADER + 18 + i * ROW;
 const outPortY = (n) => HEADER + 18 + (Math.max(n, 1) - 1) * (ROW / 2);
@@ -112,27 +178,101 @@ const seed = () => {
   };
 };
 
-// ---- evaluation engine over the JSON graph ----
+// ---- domain guards: return error string or null ----
+const bsGuard   = (i) => (i.S > 0 && i.K > 0 && i.sigma > 0 && i.T > 0) ? null : "S, K, σ, T must all be positive";
+const bondGuard  = (i) => (i.n > 0 && i.r >= 0) ? null : "n must be positive and r ≥ 0";
+const GUARDS = {
+  bs_call:            bsGuard,
+  bs_put:             bsGuard,
+  delta:              bsGuard,
+  gamma:              bsGuard,
+  vega:               bsGuard,
+  theta_call:         bsGuard,
+  rho_call:           bsGuard,
+  binary_event: (_, p) => (
+    p.mktProb > 0 && p.mktProb < 1 && p.myProb > 0 && p.myProb < 1 && Number.isFinite(+p.payoff)
+  ) ? null : "probabilities must be between 0 and 1",
+  gordon_growth:      (i) => (i.r > i.g) ? null : "discount rate r must exceed growth rate g",
+  growing_perpetuity: (i) => (i.r > i.g) ? null : "discount rate r must exceed growth rate g",
+  perpetuity:         (i) => (i.r > 0)   ? null : "discount rate r must be positive",
+  sharpe_ratio:       (i) => (i.sigma > 0) ? null : "σ must be positive",
+  sortino_ratio:      (i) => (i.sigmaDown > 0) ? null : "downside deviation must be positive",
+  var_parametric:     (i) => (i.sigma > 0 && i.z > 0) ? null : "σ and z must be positive",
+  calmar_ratio:       (i) => (i.maxDrawdown !== 0) ? null : "max drawdown must be non-zero",
+  bond_price:         bondGuard,
+  macaulay_duration:  (i) => (i.n > 0 && i.r > 0) ? null : "n and r must be positive",
+  modified_duration:  (i) => (i.n > 0 && i.r > 0) ? null : "n and r must be positive",
+  bond_convexity:     (i) => (i.n > 0 && i.r > 0) ? null : "n and r must be positive",
+  ytm:                (i) => (i.P > 0 && i.n > 0) ? null : "price P and periods n must be positive",
+  beta:               (i) => (i.varM > 0) ? null : "market variance must be positive",
+  log_return:         (i) => (i.St > 0 && i.S0 > 0) ? null : "prices must be positive",
+  realized_vol:       (i) => (i.dailySigma > 0) ? null : "daily σ must be positive",
+  information_ratio:  (i) => (i.trackingError > 0) ? null : "tracking error must be positive",
+  treynor_ratio:      (i) => (i.beta !== 0) ? null : "beta must be non-zero",
+  current_yield:      (i) => (i.P > 0) ? null : "price must be positive",
+  put_call_parity:    (i) => (i.T > 0) ? null : "T must be positive",
+};
+
+// ---- evaluation engine — Kahn topo sort, returns { vals, errors } ----
 function evaluate(blocks, connections) {
-  const vals = {};
-  const inputsFor = (b) => {
-    const inp = {};
-    (DEFS[b.type].inputs || []).forEach((p) => {
-      const c = connections.find((c) => c.to === b.id && c.toPort === p.name);
-      inp[p.name] = c ? vals[c.from] : undefined;
-    });
-    return inp;
-  };
-  for (let pass = 0; pass < blocks.length + 2; pass++) {
-    blocks.forEach((b) => {
-      const d = DEFS[b.type];
-      if (d.concept) { vals[b.id] = undefined; return; }
-      const inp = inputsFor(b);
-      const ready = (d.inputs || []).every((p) => inp[p.name] !== undefined);
-      if ((ready || d.isFormula) && d.compute) vals[b.id] = d.compute(inp, b.params || {});
-    });
+  const vals = {}, errors = {};
+
+  // build adjacency and in-degree from connections
+  const inDeg = {}, outEdges = {};
+  blocks.forEach((b) => { inDeg[b.id] = 0; outEdges[b.id] = []; });
+  connections.forEach((c) => {
+    if (inDeg[c.to] !== undefined && outEdges[c.from] !== undefined) {
+      inDeg[c.to]++;
+      outEdges[c.from].push(c.to);
+    }
+  });
+
+  // Kahn BFS
+  const queue = blocks.filter((b) => inDeg[b.id] === 0).map((b) => b.id);
+  const order = [];
+  while (queue.length) {
+    const id = queue.shift();
+    order.push(id);
+    outEdges[id].forEach((nid) => { if (--inDeg[nid] === 0) queue.push(nid); });
   }
-  return vals;
+  // any node not reached is in a cycle
+  blocks.forEach((b) => { if (!order.includes(b.id)) errors[b.id] = "cycle detected"; });
+
+  // compute in topo order
+  order.forEach((id) => {
+    const b = blocks.find((x) => x.id === id);
+    if (!b) return;
+    const d = DEFS[b.type];
+    if (d.concept) return;
+
+    // collect inputs — undefined if upstream not computed or errored (→ incomplete, not error)
+    const inp = {};
+    (d.inputs || []).forEach((p) => {
+      const c = connections.find((c) => c.to === id && c.toPort === p.name);
+      if (c) inp[p.name] = vals[c.from];
+    });
+
+    const ready = (d.inputs || []).every((p) => inp[p.name] !== undefined);
+    if (!ready && !d.isFormula) return; // incomplete — not an error
+
+    // domain guard (runs only when ready)
+    const guard = GUARDS[b.type];
+    if (guard && ready) {
+      const msg = guard(inp, b.params || {});
+      if (msg) { errors[id] = msg; return; }
+    }
+
+    // compute + universal finite check
+    if (d.compute) {
+      const result = d.compute(inp, b.params || {});
+      if (result !== undefined && !Number.isFinite(result)) {
+        errors[id] = "computation produced a non-finite value"; return;
+      }
+      vals[id] = result;
+    }
+  });
+
+  return { vals, errors };
 }
 
 export default function App() {
@@ -147,7 +287,7 @@ export default function App() {
   const [explaining, setExplaining] = useState(false);
   const canvasRef = useRef(null);
 
-  const vals = useMemo(() => evaluate(blocks, connections), [blocks, connections]);
+  const { vals, errors } = useMemo(() => evaluate(blocks, connections), [blocks, connections]);
 
   const setBlocks = (fn) => setGraph((g) => ({ ...g, blocks: fn(g.blocks) }));
   const setConns  = (fn) => setGraph((g) => ({ ...g, connections: fn(g.connections) }));
@@ -255,7 +395,12 @@ Use short ids like n1,n2. toPort must match the target block's input names. Do n
   };
 
   useEffect(() => {
-    const onKey = (e) => { if (e.key === "Delete" && selected) delBlock(selected); };
+    const onKey = (e) => {
+      if (e.key !== "Delete" || !selected) return;
+      const tag = document.activeElement.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || document.activeElement.isContentEditable) return;
+      delBlock(selected);
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [selected]);
@@ -268,6 +413,29 @@ Use short ids like n1,n2. toPort must match the target block's input names. Do n
   };
 
   const selectedBlock = blocks.find((b) => b.id === selected);
+
+  // ---- save / load ----
+  const saveGraph = () => {
+    const json = JSON.stringify({ blocks, connections }, null, 2);
+    const url = URL.createObjectURL(new Blob([json], { type: "application/json" }));
+    const a = document.createElement("a");
+    a.href = url; a.download = "celerie-model.json"; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const loadGraph = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const { blocks: b, connections: c } = JSON.parse(ev.target.result);
+        if (Array.isArray(b) && Array.isArray(c)) setGraph({ blocks: b, connections: c });
+      } catch { /* ignore malformed files */ }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  };
 
   return (
     <div style={st.app}>
@@ -285,6 +453,11 @@ Use short ids like n1,n2. toPort must match the target block's input names. Do n
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <span style={st.live}><span className="dot" />live compute</span>
+          <button className="btn-ghost" style={st.ghost} onClick={saveGraph}>Save</button>
+          <label className="btn-ghost" style={{ ...st.ghost, cursor: "pointer" }}>
+            Load
+            <input type="file" accept=".json" style={{ display: "none" }} onChange={loadGraph} />
+          </label>
           <button className="btn-ghost" style={st.ghost} onClick={() => setGraph(seed())}>Reset</button>
           <button className="btn-ghost" style={st.ghost} onClick={() => setGraph({ blocks: [], connections: [] })}>Clear</button>
         </div>
@@ -342,6 +515,7 @@ Use short ids like n1,n2. toPort must match the target block's input names. Do n
           {blocks.map((b) => {
             const d = DEFS[b.type], meta = CAT[d.cat], v = vals[b.id];
             const sel = selected === b.id;
+            const err = errors[b.id];
             return (
               <div
                 key={b.id}
@@ -349,8 +523,10 @@ Use short ids like n1,n2. toPort must match the target block's input names. Do n
                   ...st.node,
                   left: b.x,
                   top: b.y,
-                  borderColor: sel ? meta.c : "var(--line)",
-                  boxShadow: sel
+                  borderColor: err ? "#DC2626" : sel ? meta.c : "var(--line)",
+                  boxShadow: err
+                    ? "0 0 0 2px #DC262633, 0 4px 12px rgba(220,38,38,.12)"
+                    : sel
                     ? `0 0 0 2px ${meta.c}33, 0 8px 24px rgba(29,31,16,.12)`
                     : "0 1px 3px rgba(29,31,16,.07), 0 4px 12px rgba(29,31,16,.05)",
                 }}
@@ -428,10 +604,13 @@ Use short ids like n1,n2. toPort must match the target block's input names. Do n
                   </div>
                 )}
 
-                {/* computed value */}
+                {/* computed value / error */}
                 {!d.concept && (d.inputs?.length || d.multiparam || d.type === "output") ? (
-                  <div style={{ ...st.valBox, color: meta.c }}>
-                    {d.cat === "output" ? "= " : ""}{fmt(v)}{d.multiparam && <span style={st.edgeTag}>× edge</span>}
+                  <div style={{ ...st.valBox, color: err ? "#DC2626" : meta.c }}>
+                    {err
+                      ? <span>— <span title={err} style={{ fontSize: 13, cursor: "help" }}>⚠</span></span>
+                      : <>{d.cat === "output" ? "= " : ""}{fmt(v)}{d.multiparam && <span style={st.edgeTag}>× edge</span>}</>
+                    }
                   </div>
                 ) : null}
                 {d.concept && <div style={st.conceptBox}>physics / signal block</div>}

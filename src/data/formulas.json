@@ -1,0 +1,605 @@
+[
+  {
+    "id": "gordon_growth",
+    "name": "Gordon Growth Model",
+    "latex": "P = \\frac{D_1}{r - g}",
+    "category": "valuation",
+    "description": "Values a stock as the present value of its dividends growing at a constant rate g forever. Valid only when the discount rate r strictly exceeds the growth rate g.",
+    "inputs": [
+      { "symbol": "D1",  "label": "Next dividend",   "type": "currency" },
+      { "symbol": "r",   "label": "Discount rate",   "type": "percent"  },
+      { "symbol": "g",   "label": "Growth rate",     "type": "percent"  }
+    ],
+    "fn": "gordonGrowth",
+    "constraints": "r > g",
+    "tags": ["ddm", "equity", "dividend"]
+  },
+  {
+    "id": "pe_valuation",
+    "name": "P/E Valuation",
+    "latex": "P = EPS \\times \\left(\\frac{P}{E}\\right)",
+    "category": "valuation",
+    "description": "Estimates a stock's fair value by multiplying earnings per share by a target price-to-earnings multiple. The multiple is usually drawn from peers or historical averages.",
+    "inputs": [
+      { "symbol": "EPS", "label": "Earnings per share", "type": "currency" },
+      { "symbol": "pe",  "label": "Target P/E multiple", "type": "number"  }
+    ],
+    "fn": "peValuation",
+    "constraints": null,
+    "tags": ["equity", "multiple", "relative valuation"]
+  },
+  {
+    "id": "ev_ebitda",
+    "name": "EV/EBITDA Multiple",
+    "latex": "EV = EBITDA \\times x",
+    "category": "valuation",
+    "description": "Estimates enterprise value as a multiple of EBITDA, a proxy for operating cash generation. Frequently used in M&A to compare companies across capital structures.",
+    "inputs": [
+      { "symbol": "EBITDA",   "label": "EBITDA",         "type": "currency" },
+      { "symbol": "multiple", "label": "EV/EBITDA turn.", "type": "number"   }
+    ],
+    "fn": "evEbitda",
+    "constraints": null,
+    "tags": ["enterprise value", "multiple", "m&a"]
+  },
+  {
+    "id": "capm",
+    "name": "CAPM",
+    "latex": "E(R_i) = R_f + \\beta_i (E(R_m) - R_f)",
+    "category": "portfolio",
+    "description": "The Capital Asset Pricing Model gives the expected return of an asset as the risk-free rate plus a premium proportional to its market beta. It is the cornerstone of modern asset pricing.",
+    "inputs": [
+      { "symbol": "Rf",   "label": "Risk-free rate",    "type": "percent" },
+      { "symbol": "beta", "label": "Beta",              "type": "number"  },
+      { "symbol": "Rm",   "label": "Market return",     "type": "percent" }
+    ],
+    "fn": "capm",
+    "constraints": null,
+    "tags": ["capm", "expected return", "beta"]
+  },
+  {
+    "id": "wacc",
+    "name": "WACC",
+    "latex": "WACC = \\frac{E}{V}R_e + \\frac{D}{V}R_d(1-T_c)",
+    "category": "valuation",
+    "description": "The Weighted Average Cost of Capital blends the after-tax cost of debt and cost of equity, weighted by their market-value shares. Used as the discount rate in DCF models.",
+    "inputs": [
+      { "symbol": "E",  "label": "Equity value",   "type": "currency" },
+      { "symbol": "D",  "label": "Debt value",     "type": "currency" },
+      { "symbol": "Re", "label": "Cost of equity", "type": "percent"  },
+      { "symbol": "Rd", "label": "Cost of debt",   "type": "percent"  },
+      { "symbol": "Tc", "label": "Tax rate",       "type": "percent"  }
+    ],
+    "fn": "wacc",
+    "constraints": null,
+    "tags": ["wacc", "discount rate", "dcf"]
+  },
+  {
+    "id": "gamma",
+    "name": "Option Gamma",
+    "latex": "\\Gamma = \\frac{N'(d_1)}{S\\,\\sigma\\sqrt{T}}",
+    "category": "hedging",
+    "description": "Gamma measures how fast delta changes per unit move in the underlying. A high-gamma position requires frequent re-hedging and is expensive to maintain near expiry.",
+    "inputs": [
+      { "symbol": "S",     "label": "Spot price",    "type": "currency" },
+      { "symbol": "K",     "label": "Strike",        "type": "currency" },
+      { "symbol": "r",     "label": "Risk-free rate","type": "percent"  },
+      { "symbol": "sigma", "label": "Volatility σ",  "type": "percent"  },
+      { "symbol": "T",     "label": "Time to expiry","type": "number"   }
+    ],
+    "fn": "optionGamma",
+    "constraints": "S>0, K>0, sigma>0, T>0",
+    "tags": ["greek", "gamma", "delta sensitivity"]
+  },
+  {
+    "id": "vega",
+    "name": "Option Vega",
+    "latex": "\\mathcal{V} = S\\,N'(d_1)\\,\\sqrt{T}",
+    "category": "hedging",
+    "description": "Vega is the sensitivity of an option's price to a one-unit change in implied volatility. Long options always have positive vega; sellers are short vega.",
+    "inputs": [
+      { "symbol": "S",     "label": "Spot price",    "type": "currency" },
+      { "symbol": "K",     "label": "Strike",        "type": "currency" },
+      { "symbol": "r",     "label": "Risk-free rate","type": "percent"  },
+      { "symbol": "sigma", "label": "Volatility σ",  "type": "percent"  },
+      { "symbol": "T",     "label": "Time to expiry","type": "number"   }
+    ],
+    "fn": "optionVega",
+    "constraints": "S>0, K>0, sigma>0, T>0",
+    "tags": ["greek", "vega", "volatility sensitivity"]
+  },
+  {
+    "id": "theta_call",
+    "name": "Call Theta",
+    "latex": "\\Theta = -\\frac{S\\,\\sigma\\,N'(d_1)}{2\\sqrt{T}} - r K e^{-rT} N(d_2)",
+    "category": "hedging",
+    "description": "Theta is the daily time decay of a call option's value. It is almost always negative for long options, accelerating as expiration approaches.",
+    "inputs": [
+      { "symbol": "S",     "label": "Spot price",    "type": "currency" },
+      { "symbol": "K",     "label": "Strike",        "type": "currency" },
+      { "symbol": "r",     "label": "Risk-free rate","type": "percent"  },
+      { "symbol": "sigma", "label": "Volatility σ",  "type": "percent"  },
+      { "symbol": "T",     "label": "Time to expiry","type": "number"   }
+    ],
+    "fn": "optionThetaCall",
+    "constraints": "S>0, K>0, sigma>0, T>0",
+    "tags": ["greek", "theta", "time decay"]
+  },
+  {
+    "id": "rho_call",
+    "name": "Call Rho",
+    "latex": "\\rho = K T e^{-rT} N(d_2)",
+    "category": "hedging",
+    "description": "Rho measures an option's sensitivity to interest rates. Call options have positive rho — higher rates make the call more valuable because financing the stock position is cheaper.",
+    "inputs": [
+      { "symbol": "S",     "label": "Spot price",    "type": "currency" },
+      { "symbol": "K",     "label": "Strike",        "type": "currency" },
+      { "symbol": "r",     "label": "Risk-free rate","type": "percent"  },
+      { "symbol": "sigma", "label": "Volatility σ",  "type": "percent"  },
+      { "symbol": "T",     "label": "Time to expiry","type": "number"   }
+    ],
+    "fn": "optionRhoCall",
+    "constraints": "S>0, K>0, sigma>0, T>0",
+    "tags": ["greek", "rho", "rate sensitivity"]
+  },
+  {
+    "id": "put_call_parity",
+    "name": "Put-Call Parity",
+    "latex": "C - P = S - K e^{-rT}",
+    "category": "hedging",
+    "description": "Put-call parity is an arbitrage identity: the difference between a call and a put with the same strike and expiry equals the spot price minus the present value of the strike. Violations imply a free lunch.",
+    "inputs": [
+      { "symbol": "S", "label": "Spot price",     "type": "currency" },
+      { "symbol": "K", "label": "Strike",         "type": "currency" },
+      { "symbol": "r", "label": "Risk-free rate", "type": "percent"  },
+      { "symbol": "T", "label": "Time to expiry", "type": "number"   }
+    ],
+    "fn": "putCallParity",
+    "constraints": "T>0",
+    "tags": ["parity", "arbitrage", "derivatives"]
+  },
+  {
+    "id": "bond_price",
+    "name": "Bond Price",
+    "latex": "P = \\sum_{t=1}^{n} \\frac{C}{(1+r)^t} + \\frac{FV}{(1+r)^n}",
+    "category": "fixed_income",
+    "description": "A bond's fair price is the present value of all future coupon payments plus the face value repaid at maturity, discounted at the market yield.",
+    "inputs": [
+      { "symbol": "C",  "label": "Coupon payment", "type": "currency" },
+      { "symbol": "FV", "label": "Face value",     "type": "currency" },
+      { "symbol": "r",  "label": "Yield per period","type": "percent" },
+      { "symbol": "n",  "label": "Periods",        "type": "number"   }
+    ],
+    "fn": "bondPrice",
+    "constraints": "n>0, r>=0",
+    "tags": ["bond", "fixed income", "present value"]
+  },
+  {
+    "id": "current_yield",
+    "name": "Current Yield",
+    "latex": "CY = \\frac{C}{P}",
+    "category": "fixed_income",
+    "description": "Current yield is the annual coupon income divided by the bond's market price. It ignores the pull-to-par effect and capital gains, so it understates yield for discount bonds and overstates it for premium bonds.",
+    "inputs": [
+      { "symbol": "C", "label": "Annual coupon", "type": "currency" },
+      { "symbol": "P", "label": "Market price",  "type": "currency" }
+    ],
+    "fn": null,
+    "expr": "C / P",
+    "constraints": "P>0",
+    "tags": ["bond", "yield", "income"]
+  },
+  {
+    "id": "macaulay_duration",
+    "name": "Macaulay Duration",
+    "latex": "D = \\frac{\\sum_{t} t \\cdot PV(CF_t)}{P}",
+    "category": "fixed_income",
+    "description": "Macaulay duration is the weighted average time to receive a bond's cash flows, expressed in periods. It is a measure of interest rate risk and equals a zero-coupon bond's time to maturity.",
+    "inputs": [
+      { "symbol": "C",  "label": "Coupon payment", "type": "currency" },
+      { "symbol": "FV", "label": "Face value",     "type": "currency" },
+      { "symbol": "r",  "label": "Yield per period","type": "percent" },
+      { "symbol": "n",  "label": "Periods",        "type": "number"   }
+    ],
+    "fn": "macaulayDuration",
+    "constraints": "n>0, r>0",
+    "tags": ["bond", "duration", "interest rate risk"]
+  },
+  {
+    "id": "modified_duration",
+    "name": "Modified Duration",
+    "latex": "D^* = \\frac{D_{Mac}}{1 + r}",
+    "category": "fixed_income",
+    "description": "Modified duration translates Macaulay duration into the approximate percentage price change for a 1% change in yield. Multiply by the bond price to get the dollar duration.",
+    "inputs": [
+      { "symbol": "C",  "label": "Coupon payment", "type": "currency" },
+      { "symbol": "FV", "label": "Face value",     "type": "currency" },
+      { "symbol": "r",  "label": "Yield per period","type": "percent" },
+      { "symbol": "n",  "label": "Periods",        "type": "number"   }
+    ],
+    "fn": "modifiedDuration",
+    "constraints": "n>0, r>0",
+    "tags": ["bond", "duration", "DV01"]
+  },
+  {
+    "id": "bond_convexity",
+    "name": "Bond Convexity",
+    "latex": "CX = \\frac{1}{P}\\sum_{t} \\frac{t(t+1)\\,CF_t}{(1+r)^{t+2}}",
+    "category": "fixed_income",
+    "description": "Convexity measures the curvature in the price-yield relationship. Adding a convexity adjustment to the duration estimate improves accuracy for larger rate moves.",
+    "inputs": [
+      { "symbol": "C",  "label": "Coupon payment", "type": "currency" },
+      { "symbol": "FV", "label": "Face value",     "type": "currency" },
+      { "symbol": "r",  "label": "Yield per period","type": "percent" },
+      { "symbol": "n",  "label": "Periods",        "type": "number"   }
+    ],
+    "fn": "bondConvexity",
+    "constraints": "n>0, r>0",
+    "tags": ["bond", "convexity", "second-order"]
+  },
+  {
+    "id": "ytm",
+    "name": "Yield to Maturity",
+    "latex": "P = \\sum_{t=1}^{n}\\frac{C}{(1+YTM)^t} + \\frac{FV}{(1+YTM)^n}",
+    "category": "fixed_income",
+    "description": "YTM is the single discount rate that makes the present value of all cash flows equal the current bond price. Solved numerically via Newton's method.",
+    "inputs": [
+      { "symbol": "C",  "label": "Coupon payment", "type": "currency" },
+      { "symbol": "FV", "label": "Face value",     "type": "currency" },
+      { "symbol": "P",  "label": "Market price",   "type": "currency" },
+      { "symbol": "n",  "label": "Periods",        "type": "number"   }
+    ],
+    "fn": "ytm",
+    "constraints": "P>0, n>0",
+    "tags": ["bond", "yield", "newton"]
+  },
+  {
+    "id": "portfolio_return_2",
+    "name": "Portfolio Return (2-asset)",
+    "latex": "R_p = w_1 R_1 + w_2 R_2",
+    "category": "portfolio",
+    "description": "The expected return of a two-asset portfolio is the weighted average of the individual asset returns. Weight w2 is set to 1 − w1 automatically only when both weights are supplied.",
+    "inputs": [
+      { "symbol": "w1", "label": "Weight asset 1", "type": "number"  },
+      { "symbol": "R1", "label": "Return asset 1", "type": "percent" },
+      { "symbol": "w2", "label": "Weight asset 2", "type": "number"  },
+      { "symbol": "R2", "label": "Return asset 2", "type": "percent" }
+    ],
+    "fn": "portfolioReturn2",
+    "constraints": null,
+    "tags": ["portfolio", "return", "weights"]
+  },
+  {
+    "id": "portfolio_variance_2",
+    "name": "Portfolio Variance (2-asset)",
+    "latex": "\\sigma_p^2 = w_1^2\\sigma_1^2 + w_2^2\\sigma_2^2 + 2w_1 w_2 \\rho\\,\\sigma_1\\sigma_2",
+    "category": "portfolio",
+    "description": "The variance of a two-asset portfolio accounts for individual variances and the covariance between assets. Diversification benefit grows as correlation ρ decreases.",
+    "inputs": [
+      { "symbol": "w1",  "label": "Weight 1",     "type": "number"  },
+      { "symbol": "s1",  "label": "Std dev 1",    "type": "percent" },
+      { "symbol": "w2",  "label": "Weight 2",     "type": "number"  },
+      { "symbol": "s2",  "label": "Std dev 2",    "type": "percent" },
+      { "symbol": "rho", "label": "Correlation ρ","type": "number"  }
+    ],
+    "fn": "portfolioVariance2",
+    "constraints": "-1 <= rho <= 1",
+    "tags": ["portfolio", "variance", "diversification"]
+  },
+  {
+    "id": "beta",
+    "name": "Beta (from Cov)",
+    "latex": "\\beta = \\frac{\\text{Cov}(R_i, R_m)}{\\text{Var}(R_m)}",
+    "category": "portfolio",
+    "description": "Beta measures an asset's systematic risk relative to the market. A beta of 1 moves with the market; above 1 amplifies market moves; below 1 dampens them.",
+    "inputs": [
+      { "symbol": "covIM", "label": "Cov(Ri, Rm)", "type": "number" },
+      { "symbol": "varM",  "label": "Var(Rm)",     "type": "number" }
+    ],
+    "fn": "betaFromCov",
+    "constraints": "varM > 0",
+    "tags": ["beta", "systematic risk", "capm"]
+  },
+  {
+    "id": "jensen_alpha",
+    "name": "Jensen's Alpha",
+    "latex": "\\alpha = R_p - [R_f + \\beta(R_m - R_f)]",
+    "category": "portfolio",
+    "description": "Jensen's alpha is the excess return a portfolio earns above its CAPM-predicted return. Positive alpha indicates manager skill after controlling for market risk.",
+    "inputs": [
+      { "symbol": "Rp",   "label": "Portfolio return","type": "percent" },
+      { "symbol": "Rf",   "label": "Risk-free rate",  "type": "percent" },
+      { "symbol": "beta", "label": "Beta",             "type": "number"  },
+      { "symbol": "Rm",   "label": "Market return",    "type": "percent" }
+    ],
+    "fn": "jensenAlpha",
+    "constraints": null,
+    "tags": ["alpha", "performance", "capm"]
+  },
+  {
+    "id": "treynor_ratio",
+    "name": "Treynor Ratio",
+    "latex": "T = \\frac{R_p - R_f}{\\beta}",
+    "category": "portfolio",
+    "description": "The Treynor ratio measures excess return per unit of systematic risk (beta). Unlike Sharpe, it ignores idiosyncratic risk, making it suitable for comparing well-diversified portfolios.",
+    "inputs": [
+      { "symbol": "Rp",   "label": "Portfolio return","type": "percent" },
+      { "symbol": "Rf",   "label": "Risk-free rate",  "type": "percent" },
+      { "symbol": "beta", "label": "Beta",             "type": "number"  }
+    ],
+    "fn": "treynorRatio",
+    "constraints": "beta != 0",
+    "tags": ["treynor", "performance", "systematic risk"]
+  },
+  {
+    "id": "information_ratio",
+    "name": "Information Ratio",
+    "latex": "IR = \\frac{R_p - R_b}{\\sigma_{TE}}",
+    "category": "portfolio",
+    "description": "The information ratio measures active return per unit of tracking error. It quantifies consistency of alpha generation and is the key metric for active fund managers.",
+    "inputs": [
+      { "symbol": "Rp",           "label": "Portfolio return", "type": "percent" },
+      { "symbol": "Rb",           "label": "Benchmark return", "type": "percent" },
+      { "symbol": "trackingError","label": "Tracking error",   "type": "percent" }
+    ],
+    "fn": "informationRatio",
+    "constraints": "trackingError > 0",
+    "tags": ["IR", "active management", "tracking error"]
+  },
+  {
+    "id": "sharpe_ratio",
+    "name": "Sharpe Ratio",
+    "latex": "S = \\frac{E[R - R_f]}{\\sigma}",
+    "category": "risk",
+    "description": "The Sharpe ratio is the canonical risk-adjusted performance measure: excess return per unit of total volatility. Higher is better; negative Sharpe means the investment underperformed cash.",
+    "inputs": [
+      { "symbol": "Rp",    "label": "Portfolio return","type": "percent" },
+      { "symbol": "Rf",    "label": "Risk-free rate",  "type": "percent" },
+      { "symbol": "sigma", "label": "Portfolio std dev","type": "percent" }
+    ],
+    "fn": "sharpeRatio",
+    "constraints": "sigma > 0",
+    "tags": ["sharpe", "performance", "risk-adjusted"]
+  },
+  {
+    "id": "sortino_ratio",
+    "name": "Sortino Ratio",
+    "latex": "S = \\frac{R - T}{DR}",
+    "category": "risk",
+    "description": "The Sortino ratio replaces total volatility with downside deviation, penalizing only harmful volatility below a minimum acceptable return. It gives a more nuanced picture than Sharpe for skewed distributions.",
+    "inputs": [
+      { "symbol": "Rp",        "label": "Portfolio return",  "type": "percent" },
+      { "symbol": "MAR",       "label": "Min acceptable ret","type": "percent" },
+      { "symbol": "sigmaDown", "label": "Downside deviation", "type": "percent" }
+    ],
+    "fn": "sortinoRatio",
+    "constraints": "sigmaDown > 0",
+    "tags": ["sortino", "downside risk", "performance"]
+  },
+  {
+    "id": "var_parametric",
+    "name": "Parametric VaR",
+    "latex": "VaR_{\\alpha} = -(\\mu - z_{\\alpha}\\,\\sigma)",
+    "category": "risk",
+    "description": "Parametric Value at Risk estimates the maximum expected loss over a horizon at a given confidence level, assuming returns are normally distributed. Use z = 1.645 for 95% and 2.326 for 99%.",
+    "inputs": [
+      { "symbol": "mu",    "label": "Expected return", "type": "percent" },
+      { "symbol": "sigma", "label": "Std deviation",   "type": "percent" },
+      { "symbol": "z",     "label": "z-score (e.g. 1.645)", "type": "number" }
+    ],
+    "fn": "varParametric",
+    "constraints": "sigma > 0, z > 0",
+    "tags": ["VaR", "risk", "normal"]
+  },
+  {
+    "id": "calmar_ratio",
+    "name": "Calmar Ratio",
+    "latex": "Calmar = \\frac{R_{ann}}{|MDD|}",
+    "category": "risk",
+    "description": "The Calmar ratio divides annualized return by maximum drawdown. It is popular in hedge fund analysis because drawdown captures tail risk that standard deviation ignores.",
+    "inputs": [
+      { "symbol": "annualReturn", "label": "Annual return",   "type": "percent" },
+      { "symbol": "maxDrawdown",  "label": "Max drawdown",    "type": "percent" }
+    ],
+    "fn": "calmarRatio",
+    "constraints": "maxDrawdown != 0",
+    "tags": ["calmar", "drawdown", "hedge fund"]
+  },
+  {
+    "id": "present_value",
+    "name": "Present Value",
+    "latex": "PV = \\frac{FV}{(1+r)^n}",
+    "category": "tvm",
+    "description": "Present value translates a future cash flow back to today using a discount rate. It is the mathematical foundation of all DCF-based valuation.",
+    "inputs": [
+      { "symbol": "FV", "label": "Future value", "type": "currency" },
+      { "symbol": "r",  "label": "Discount rate","type": "percent"  },
+      { "symbol": "n",  "label": "Periods",      "type": "number"   }
+    ],
+    "fn": "presentValue",
+    "constraints": "n >= 0",
+    "tags": ["PV", "discounting", "time value"]
+  },
+  {
+    "id": "future_value",
+    "name": "Future Value",
+    "latex": "FV = PV \\cdot (1+r)^n",
+    "category": "tvm",
+    "description": "Future value compounds a present sum at a periodic rate for n periods. It is the inverse of present value and answers 'how much will this be worth later?'",
+    "inputs": [
+      { "symbol": "PV", "label": "Present value",  "type": "currency" },
+      { "symbol": "r",  "label": "Growth rate",    "type": "percent"  },
+      { "symbol": "n",  "label": "Periods",        "type": "number"   }
+    ],
+    "fn": "futureValue",
+    "constraints": "n >= 0",
+    "tags": ["FV", "compounding", "time value"]
+  },
+  {
+    "id": "npv5",
+    "name": "NPV (5 periods)",
+    "latex": "NPV = \\sum_{t=0}^{4} \\frac{CF_t}{(1+r)^t}",
+    "category": "tvm",
+    "description": "Net present value sums discounted cash flows over five periods. A positive NPV means the project creates value at the given cost of capital; negative means value destruction.",
+    "inputs": [
+      { "symbol": "CF0", "label": "CF period 0", "type": "currency" },
+      { "symbol": "CF1", "label": "CF period 1", "type": "currency" },
+      { "symbol": "CF2", "label": "CF period 2", "type": "currency" },
+      { "symbol": "CF3", "label": "CF period 3", "type": "currency" },
+      { "symbol": "CF4", "label": "CF period 4", "type": "currency" },
+      { "symbol": "r",   "label": "Discount rate","type": "percent"  }
+    ],
+    "fn": "npv5",
+    "constraints": null,
+    "tags": ["NPV", "DCF", "project finance"]
+  },
+  {
+    "id": "irr5",
+    "name": "IRR (5 periods)",
+    "latex": "0 = \\sum_{t=0}^{4} \\frac{CF_t}{(1+IRR)^t}",
+    "category": "tvm",
+    "description": "The internal rate of return is the discount rate that zeroes out the NPV of a cash flow stream. A project is worthwhile if the IRR exceeds the cost of capital. Solved via Newton's method.",
+    "inputs": [
+      { "symbol": "CF0", "label": "CF period 0", "type": "currency" },
+      { "symbol": "CF1", "label": "CF period 1", "type": "currency" },
+      { "symbol": "CF2", "label": "CF period 2", "type": "currency" },
+      { "symbol": "CF3", "label": "CF period 3", "type": "currency" },
+      { "symbol": "CF4", "label": "CF period 4", "type": "currency" }
+    ],
+    "fn": "irr5",
+    "constraints": null,
+    "tags": ["IRR", "return", "newton"]
+  },
+  {
+    "id": "annuity_pv",
+    "name": "Annuity PV",
+    "latex": "PV = PMT \\cdot \\frac{1-(1+r)^{-n}}{r}",
+    "category": "tvm",
+    "description": "The present value of an ordinary annuity sums the PV of equal periodic payments. Used to price loans, leases, and structured products.",
+    "inputs": [
+      { "symbol": "PMT", "label": "Payment per period","type": "currency" },
+      { "symbol": "r",   "label": "Rate per period",   "type": "percent"  },
+      { "symbol": "n",   "label": "Periods",           "type": "number"   }
+    ],
+    "fn": "annuityPV",
+    "constraints": "n > 0",
+    "tags": ["annuity", "PV", "loan"]
+  },
+  {
+    "id": "annuity_fv",
+    "name": "Annuity FV",
+    "latex": "FV = PMT \\cdot \\frac{(1+r)^n - 1}{r}",
+    "category": "tvm",
+    "description": "The future value of an ordinary annuity sums the compounded value of equal periodic payments. Used in retirement savings and sinking fund calculations.",
+    "inputs": [
+      { "symbol": "PMT", "label": "Payment per period","type": "currency" },
+      { "symbol": "r",   "label": "Rate per period",   "type": "percent"  },
+      { "symbol": "n",   "label": "Periods",           "type": "number"   }
+    ],
+    "fn": "annuityFV",
+    "constraints": "n > 0",
+    "tags": ["annuity", "FV", "savings"]
+  },
+  {
+    "id": "perpetuity",
+    "name": "Perpetuity",
+    "latex": "P = \\frac{CF}{r}",
+    "category": "tvm",
+    "description": "A perpetuity pays a constant cash flow forever. Its value is simply the cash flow divided by the discount rate. Preferred shares and consol bonds are classic examples.",
+    "inputs": [
+      { "symbol": "CF", "label": "Cash flow per period","type": "currency" },
+      { "symbol": "r",  "label": "Discount rate",       "type": "percent"  }
+    ],
+    "fn": "perpetuity",
+    "constraints": "r > 0",
+    "tags": ["perpetuity", "infinite horizon", "preferred"]
+  },
+  {
+    "id": "growing_perpetuity",
+    "name": "Growing Perpetuity",
+    "latex": "P = \\frac{CF_1}{r - g}",
+    "category": "tvm",
+    "description": "A growing perpetuity grows its cash flows at rate g forever. The Gordon Growth Model for stock valuation is a direct application of this formula.",
+    "inputs": [
+      { "symbol": "CF1", "label": "Next cash flow", "type": "currency" },
+      { "symbol": "r",   "label": "Discount rate",  "type": "percent"  },
+      { "symbol": "g",   "label": "Growth rate",    "type": "percent"  }
+    ],
+    "fn": "growingPerpetuity",
+    "constraints": "r > g",
+    "tags": ["perpetuity", "gordon growth", "terminal value"]
+  },
+  {
+    "id": "compound_interest",
+    "name": "Compound Interest",
+    "latex": "A = P\\left(1 + \\frac{r}{m}\\right)^{mt}",
+    "category": "tvm",
+    "description": "Compound interest reinvests earned interest into the principal. The compounding frequency m (12 for monthly, 365 for daily) significantly affects the accumulated amount over long horizons.",
+    "inputs": [
+      { "symbol": "P", "label": "Principal",         "type": "currency" },
+      { "symbol": "r", "label": "Annual rate",        "type": "percent"  },
+      { "symbol": "n", "label": "Years",              "type": "number"   },
+      { "symbol": "m", "label": "Compounds per year", "type": "number"   }
+    ],
+    "fn": "compoundInterest",
+    "constraints": "m > 0, n >= 0",
+    "tags": ["compounding", "interest", "savings"]
+  },
+  {
+    "id": "continuous_compound",
+    "name": "Continuous Compounding",
+    "latex": "A = P e^{rt}",
+    "category": "tvm",
+    "description": "Continuous compounding is the mathematical limit as compounding frequency goes to infinity. It is used in the Black-Scholes model and forms the basis of the risk-neutral pricing framework.",
+    "inputs": [
+      { "symbol": "P", "label": "Principal",  "type": "currency" },
+      { "symbol": "r", "label": "Annual rate","type": "percent"  },
+      { "symbol": "t", "label": "Years",      "type": "number"   }
+    ],
+    "fn": "continuousCompound",
+    "constraints": null,
+    "tags": ["compounding", "continuous", "black-scholes"]
+  },
+  {
+    "id": "gbm_expected",
+    "name": "GBM Expected Value",
+    "latex": "E[S_t] = S_0 e^{\\mu t}",
+    "category": "filtering",
+    "description": "Under Geometric Brownian Motion, the expected asset price grows exponentially at drift rate μ. This is the risk-neutral measure foundation: set μ = r to get the forward price.",
+    "inputs": [
+      { "symbol": "S0", "label": "Initial price", "type": "currency" },
+      { "symbol": "mu", "label": "Drift rate μ",  "type": "percent"  },
+      { "symbol": "T",  "label": "Time horizon",  "type": "number"   }
+    ],
+    "fn": "gbmExpected",
+    "constraints": "S0 > 0, T >= 0",
+    "tags": ["GBM", "drift", "stochastic"]
+  },
+  {
+    "id": "log_return",
+    "name": "Log Return",
+    "latex": "r = \\ln\\left(\\frac{S_t}{S_{t-1}}\\right)",
+    "category": "filtering",
+    "description": "The log return is time-additive and approximately equal to the simple return for small moves. It is the standard input for volatility estimation and most stochastic models.",
+    "inputs": [
+      { "symbol": "St", "label": "Current price",  "type": "currency" },
+      { "symbol": "S0", "label": "Previous price", "type": "currency" }
+    ],
+    "fn": "logReturn",
+    "constraints": "St > 0, S0 > 0",
+    "tags": ["log return", "GBM", "volatility"]
+  },
+  {
+    "id": "realized_vol",
+    "name": "Realized Volatility",
+    "latex": "\\sigma_{ann} = \\sigma_{daily} \\cdot \\sqrt{252}",
+    "category": "filtering",
+    "description": "Annualized realized volatility is the standard deviation of daily log returns scaled by the square root of trading days. It is the empirical counterpart to implied volatility.",
+    "inputs": [
+      { "symbol": "dailySigma", "label": "Daily log-return σ", "type": "percent" }
+    ],
+    "fn": "realizedVol",
+    "constraints": "dailySigma > 0",
+    "tags": ["volatility", "realized", "annualized"]
+  }
+]

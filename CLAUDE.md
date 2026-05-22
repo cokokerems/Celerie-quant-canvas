@@ -14,58 +14,69 @@ pixels — it reads and writes that JSON via a constrained vocabulary. This is t
 architectural decision; preserve it.
 
 ## Repo layout
-- `QuantBlocks.jsx` — the entire app (single React component + styles). Brand inside is "Celerie".
-- `server.js` — Express proxy that holds the Anthropic key and exposes `POST /api/claude`.
-- `vite.config.js` — dev server proxies `/api` to the backend on :8787.
-- `.env` (from `.env.example`) — holds `ANTHROPIC_API_KEY`. Never commit it; never ship it to the client.
-- `npm run dev` runs web + api together (concurrently).
+```
+QuantBlocks.jsx          — entire app (single React component + styles)
+server.js                — Express proxy; holds ANTHROPIC_API_KEY, exposes POST /api/claude
+vite.config.js           — dev server proxies /api → :8787
+.env (from .env.example) — ANTHROPIC_API_KEY. Never commit; never ship to client.
+src/lib/quantMath.js     — all math functions (Greeks, bonds, TVM, portfolio, risk, stochastic)
+src/data/formulas.json   — 37 formula definitions (LaTeX, inputs, descriptions, tags)
+src/lib/test.js          — formula test runner (node src/lib/test.js) — 43/43 pass
+```
+`npm run dev` runs web + api together (concurrently).
 
-## Current state
-- Live compute engine for: Black-Scholes call/put, option delta, binary-event edge,
-  custom formula cells.
-- "Concept" blocks (EMA, Kalman filter) are placeholders the agent can place and
-  explain but that do not compute yet.
-- Agent (Builder + Tutor) calls go through the local `server.js` proxy. The API key
-  lives in `.env` on the server only — the browser never sees it.
+## Current state (as of last session)
+
+### Compute engine
+- **Evaluation**: Kahn topological sort; each node computed exactly once in dependency
+  order. Cycle detection built in — cycle participants are marked as errors.
+- **Error model**: `evaluate()` returns `{ vals, errors }`. Three block states:
+  - *incomplete* — required input not wired → shows `—`, no red border
+  - *error* — guard failed, non-finite result, or cycle → red border + `— ⚠` tooltip
+  - *ok* — `vals[id]` is a finite number
+- **Domain guards** (`GUARDS`): BS/Delta/Greeks require S,K,σ,T > 0; binary-event
+  requires probs in (0,1); bond blocks require n > 0, r ≥ 0; etc.
+- **Delete-key guard**: does not fire when focus is inside input/textarea.
+
+### Block library (44 blocks total)
+**Original 7**: spot, strike, rate, vol, time, bs_call, bs_put, delta, binary_event,
+ema (concept), kalman (concept), formula (custom cell), output.
+
+**37 new blocks** across 4 new categories:
+- **Equity Valuation**: Gordon Growth, P/E Multiple, EV/EBITDA, WACC
+- **Derivatives**: Gamma, Vega, Call Theta, Call Rho, Put-Call Parity
+- **Fixed Income**: Bond Price, Current Yield, Macaulay Duration, Modified Duration,
+  Convexity, YTM (Newton solve)
+- **Portfolio Theory**: CAPM, Portfolio Return (2-asset), Portfolio Variance (2-asset),
+  Beta, Jensen's Alpha, Treynor Ratio, Information Ratio
+- **Risk Metrics**: Sharpe Ratio, Sortino Ratio, Parametric VaR, Calmar Ratio
+- **Time Value of Money**: Present Value, Future Value, NPV (5-period), IRR (Newton),
+  Annuity PV, Annuity FV, Perpetuity, Growing Perpetuity, Compound Interest,
+  Continuous Compounding
+- **Stochastic**: GBM Expected Value, Log Return, Realized Volatility
+
+### UI & persistence
+- **Theme**: warm cream (#FFF8E7 bg / #1D1F10 text), sage green accent (#4A7C59),
+  shadcn-inspired cards with DM Sans + DM Mono + Lora fonts.
+- **Save / Load**: header buttons download/upload `celerie-model.json`.
+- **Agent**: Builder + Tutor calls go through `server.js` proxy; API key server-only.
 
 ## The wedge (don't lose this)
-The defensible value is the **Tutor / learning outcome**. The product teaches the concept while you build.
-Every roadmap decision should answer: "for whom, doing what, better than today?"
-Resist adding more block *types* before the existing ones are deep and correct —
-breadth-creep is what killed earlier versions of this idea.
+The defensible value is the **Tutor / learning outcome**. The product teaches the
+concept while you build. Every roadmap decision should answer: "for whom, doing what,
+better than today?" Resist adding more block *types* before the existing ones are
+deep and correct — breadth-creep is what killed earlier versions of this idea.
 
 ## Design edges already folded in
-- **Tiered blocks**: prebuilt -> parametric -> advanced formula cell (the "drop into
-  code" escape hatch). This is the answer to "why not just use Excel."
-- **Binary-Event Edge block**: Cornwall-Capital-style mispricing — your probability vs
-  the market's. Output is **expected edge** (profit per contract), not a raw ratio.
-  This block is unique to us; keep it the most rigorous thing on the canvas.
-
-## In-progress hardening (engine correctness pass)
-1. Replace the fixed-point `evaluate` with a Kahn topological sort + cycle detection;
-   compute each node once in dependency order.
-2. Domain guards (`GUARDS`): BS/Delta require S,K,sigma,T > 0; binary-event requires
-   both probabilities in (0,1). Failed guard or NaN/non-finite => store a per-block
-   error, never render garbage.
-3. `evaluate` returns `{ vals, errors }`; errored blocks show a red border + inline ⚠.
-4. Delete-key handler must not fire while typing in an input/textarea/contentEditable.
-
-## Open threads / next steps (after the correctness pass)
-1. **JSON save/load** of the graph (it already *is* JSON). Do this BEFORE new features —
-   it removes the demo risk of losing a model on refresh. This is the next prompt.
-2. **Validator agent** (third role): catch wiring mistakes (e.g. a price fed into a
-   volatility port) via dimensional/units checks. Reuse a "Decline / Once / Always"
-   permission overlay for agent-initiated rewires.
-3. **Lazy-loaded block specs**: give the agent a catalog + a `load_block_spec(type)`
-   tool instead of the full vocab in context, so it scales to many blocks.
-4. Make the concept blocks (Kalman, EMA) compute on a real price series.
-5. Secure the formula-cell evaluator (currently a JS `Function` constructor — fine for
-   demo, must be sandboxed for production).
-6. Charting layer (e.g. lightweight-charts) once time-series blocks land.
+- **Tiered blocks**: prebuilt → parametric → advanced formula cell.
+- **Binary-Event Edge**: Cornwall-Capital-style mispricing. Output is expected edge
+  (profit per contract). Most rigorous block on the canvas — keep it that way.
 
 ## Constraints
-- Keep it a single self-contained component unless a refactor is explicitly requested.
-- No browser localStorage/sessionStorage for artifact builds; for the standalone Vite
-  app, file-based or download/upload JSON is fine.
-- Positioning is educational ("we teach the math, we don't give financial advice or
-  route orders") to stay clear of MiFID II / CONSOB regulated-entity scope.
+- Keep it a **single self-contained component** (`QuantBlocks.jsx`) unless a refactor
+  is explicitly requested. `quantMath.js` and `formulas.json` are approved exceptions.
+- No browser localStorage/sessionStorage. File-based save/load is fine (and done).
+- Educational positioning — no financial advice, no order routing (MiFID II / CONSOB).
+- `npm run dev` — start dev server + proxy
+- `npm run build` — production build
+- `node src/lib/test.js` — run formula test suite (must stay all-green)
